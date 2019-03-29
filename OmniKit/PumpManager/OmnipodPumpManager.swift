@@ -79,6 +79,17 @@ extension OmnipodPumpManagerError: LocalizedError {
 
 
 public class OmnipodPumpManager: RileyLinkPumpManager, PumpManager {
+    public func createBolusProgressReporter(reportingOn dispatchQueue: DispatchQueue) -> DoseProgressReporter? {
+        return nil
+    }
+
+    public func cancelBolus(completion: @escaping (PumpManagerResult<DoseEntry?>) -> Void) {
+        enum CancellationError: Error {
+            case bolusCancellationUnsupported
+        }
+        completion(PumpManagerResult.failure(CancellationError.bolusCancellationUnsupported))
+    }
+
     public func roundToSupportedBasalRate(unitsPerHour: Double) -> Double {
         return supportedBasalRates.filter({$0 <= unitsPerHour}).max() ?? 0
     }
@@ -296,7 +307,8 @@ public class OmnipodPumpManager: RileyLinkPumpManager, PumpManager {
         
         if let bolus = podState.unfinalizedBolus, !bolus.finished {
             // TODO: return progress
-            return bolusStateTransitioning ? .canceling : .inProgress(Float(bolus.progress))
+            let dose = DoseEntry(type: .bolus, startDate: bolus.startTime, value: bolus.units, unit: .units)
+            return bolusStateTransitioning ? .canceling : .inProgress(dose)
         } else {
             return bolusStateTransitioning ? .initiating : .none
         }
